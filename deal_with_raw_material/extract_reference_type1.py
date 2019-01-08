@@ -40,6 +40,15 @@ def extract_text_from_txt(path):
     # return ','.join(lines).replace('\n','')
     return ','.join(lines)
 
+def extract_text_from_file(path):
+    if 'txt' in path :
+        file_ = extract_text_from_txt(path)
+    elif 'pdf' in path :
+        file_ = extract_text_from_pdf(path)
+    else :
+        raise ValueError('Sorry, this function only deal with text and pdf files')
+        
+    return file_
 ################################################################################
 def find_page_idx(file_):
     page_ls = []
@@ -98,8 +107,7 @@ def find_start_idx(file_) :
         start_idx = [re.search(str(i),file_).end() for i in ls if re.search(i,file_)]
         if (start_idx != []) and (start_idx < len(file_)) : return start_idx[0]
         else :
-            display(Markdown('you might find another constraint.'))
-            raise ThereIsNoConstraint
+            raise ValueError('you might find another constraint.')
 
 def find_end_idx(file_):
     references = file_[find_start_idx(file_):]
@@ -118,8 +126,7 @@ def find_end_idx(file_):
     else :
         end_idx = [(m.start(0),m.end(0)) for m in re.finditer(re.findall('[0-9]+[-][0-9]+',file_)[-1],file_)][-1][1]
         if end_idx < find_start_idx(file_) :
-            display(Markdown('you might find another constraint.'))
-            raise ThereIsNoConstraint
+            raise ValueError('you might find another constraint.')
         else : return end_idx
 
 
