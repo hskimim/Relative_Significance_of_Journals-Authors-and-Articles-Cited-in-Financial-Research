@@ -59,7 +59,7 @@ def clean_text(file_):
     return text
 
 def find_start_page(file_) :
-    ls = ['references','참고 문헌','참 고 문 헌','참  고  문  헌' ,'참조문헌' ,'참고문헌','<참 고 문 헌>']#'reference''
+    ls = ['^references','참고 문헌','참 고 문 헌','참  고  문  헌' ,'참조문헌' ,'참고문헌','<참 고 문 헌>']#'reference''
     page_ls = [i for i in file_.split("\x0c") if i]
     catch_ls = [idx for idx,page in enumerate(page_ls[len(page_ls)//2:]) for i in ls if i in page.lower()]
     if len(catch_ls) == 0 : raise ValueError('there is no notation about References')
@@ -82,12 +82,12 @@ def find_start_page(file_) :
 def find_end_page(start_page,file_) :
     except_page_ls = []
     page_ls = file_.split("\x0c")[start_page:]
-    ls = ['표 1','테이블 1','테이블','테 이 블 1','테 이 블','table 1','Table','Table 1','TABLE 1','TABLE' ,'Appendix','Appendix 1','appendix 1','APPENDIX 1','부록','부 록','Endnotes','Figure 1','FIGURE 1',\
-        '표 I','테이블 I','테 이 블 I','table I','Table I','TABLE I' ,'Appendix I','appendix I','APPENDIX I','부록','부 록','Endnotes','Figure I','Figure','FIGURE I']
+    ls = ['표 1','테이블 1','테이블','테 이 블 1','테 이 블','table 1','table','appendix','appendix 1','부록','부 록',\
+        '표 i','테이블 i','테 이 블 I','table i','appendix i','endnotes','figure i','figure']
 
     for idx,page in enumerate(page_ls) :
         for i in ls :
-            if i in page :
+            if i in page.lower() :
                 except_page_ls.append(idx)
 
     if '”' in ','.join(page_ls) :
@@ -148,7 +148,7 @@ def split_sentences(slicing_ls , file_,remove_duplicated=True):
     tuning_process2 = []
 
     for i in range(len(tuning_process1)) :
-        regex_threshold = '[(].{0,5}\s*20[0-9]{2}.{0,5}\s*[)][.]*|[(].{0,5}\s*19[0-9]{2}.{0,5}\s*[)][.]*'
+        regex_threshold = '[(].{0,5}\s*20[0-9]{2}.{0,5}\s*[)][.]|[(].{0,5}\s*19[0-9]{2}.{0,5}\s*[)][.]'
         split_ls = re.split(regex_threshold,tuning_process1[i])
         findall_ls = re.findall(regex_threshold,tuning_process1[i])
 #        split_ls = re.split('[(]20[0-9]{2}[a-zA-Z]*[)][.]|[(]19[0-9]{2}[a-zA-Z]*[)][.]',tuning_process1[i])
