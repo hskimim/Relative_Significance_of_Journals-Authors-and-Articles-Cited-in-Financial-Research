@@ -86,15 +86,36 @@ def make_dictionary(quote_sent) :
     print('eliminate the duplicated paper name')
     print(fm_df.shape )
 
+    unique_df = fm_df.copy()
     idx_ls = []
 
-    for idx,val in enumerate(fm_df['paper'].tolist()) :
+    for idx,val in enumerate(unique_df['paper'].tolist()) :
         if val not in [i[1] for i in idx_ls] :
             idx_ls.append((idx,val))
 
-    fm_df = fm_df.iloc[[i[0] for i in idx_ls]]
-    fm_df.reset_index(inplace=True)
-    print(fm_df.shape )
+    unique_df = unique_df.iloc[[i[0] for i in idx_ls]]
+    unique_df.reset_index(inplace=True)
+    print(unique_df.shape )
+
+    return fm_df,unique_df
+
+def make_dictionary_under_journal(quote_sent) :
+    paper_ls = [re.findall("“.+”",i)[0] if re.findall("“.+”",i) else None for i in quote_sent]
+    journal_ls = [re.findall("”.+",i)[0] if re.findall("”.+",i) else None for i in quote_sent]
+    author_ls = [re.findall(".+“",i)[0] if re.findall(".+“",i) else None for i in quote_sent]
+    year_ls = [re.findall("20[0-9]{2}|19[0-9]{2}",i)[0] if re.findall("20[0-9]{2}|19[0-9]{2}",i) else None for i in quote_sent]
+
+    author_ls = [i.replace('“','') if i else None for i in author_ls]
+    journal_ls = [re.sub("20[0-9]{2}|19[0-9]{2}",'',i) if i else None for i in journal_ls]
+    journal_ls = [re.sub("[()]",'',i) if i else None for i in journal_ls]
+    paper_ls = [i[1:-1] for i in paper_ls]
+    paper_ls = [i.strip() for i in paper_ls]
+
+    fm_df = pd.DataFrame(columns=['author','year','paper','journal'])
+    fm_df['author'] = author_ls
+    fm_df['year'] = year_ls
+    fm_df['paper'] = paper_ls
+    fm_df['journal'] = journal_ls
 
     return fm_df
 
@@ -143,3 +164,21 @@ def catch_the_paper_under_similarity_score(double_quote_dictionary,imperfect_ls,
 
 
     return paper_under_similarity_score
+
+def concat_df_for_make_counter_df_per_journal(quote_ls,quote_df,catch_paper_name_ls) :
+    dictionary = make_dictionary_under_journal(quote_ls)
+
+    for idx in range(len(catch_paper_name_ls)) :
+        if len(dictionary) % 1000 == 0 : print(len(dictionary))
+        append_df = quote_df[quote_df['paper'] == catch_paper_name_ls[idx]]
+        dictionary = pd.concat([dictionary,append_df])
+
+    return dictionary
+
+def tuning_the_journal_and_make_counter_df(dictionary) :
+
+    tuning_ls = [','.join(re.findall('[a-zA-Z가-힣\s]',i)).replace(',','').lower() if i else None for i in dictionary['journal'].tolist()]
+    tuning_ls = [i.replace('vol','').replace('no','').strip() if i else None for i in tuning_ls]
+    tuning_ls = [i.replace('제권','').replace('제호','').replace(' 호','').strip() if i else None for i in tuning_ls]
+    journal_counter_df = pd.DataFrame.from_dict(Counter(tuning_ls),orient='index',columns=['count']).sort_values('count',ascending=False)
+    return journal_counter_df
