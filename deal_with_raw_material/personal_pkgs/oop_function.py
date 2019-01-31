@@ -58,25 +58,39 @@ def clean_text(file_):
     text = text.replace("\n",'')
     return text
 
-def find_start_page(file_) :
-    ls = ['^references','참고 문헌','참 고 문 헌','참  고  문  헌' ,'참조문헌' ,'참고문헌','<참 고 문 헌>']#'reference''
-    page_ls = [i for i in file_.split("\x0c") if i]
-    catch_ls = [idx for idx,page in enumerate(page_ls[len(page_ls)//2:]) for i in ls if i in page.lower()]
-    if len(catch_ls) == 0 : raise ValueError('there is no notation about References')
-    catch_ls = list(set(catch_ls))
+def find_start_page(file_,special_case=False) :
+    '''
+    special_case : 문서에 장 수를 나눠주는, \x0c 특수문자가 없을 때 적용하는 것입니다. 모든 참고문헌을 읽어드릴 수는 없습니다.
+    '''
+    if special_case :
+        try :
+            if len(re.findall('\(20[0-9]{2}\)|\(19[0-9]{2}\)',file_[len(file_)//2:])) > 5:
+                references_page_index = \
+                [m.start() for m in re.finditer('\(20[0-9]{2}\)|\(19[0-9]{2}\)',file_) if m.start() > len(file_)/2][0]
 
-    detect_ls = []
-    for i in catch_ls :
-        process_ls = []
-        for j in ls :
-            if re.search(j,page_ls[len(page_ls)//2 + i].lower()) :
-                process_ls.append(re.search(j,page_ls[len(page_ls)//2 + i].lower()))
-        detect_ls.append(process_ls)
-    idx_ls = [(idx,val[0].start()) for idx,val in enumerate(detect_ls)][0]
-    if idx_ls[1] > 150 :
-        warnings.warn("the location of References is on the {}th in the page.".format(idx_ls[1]))
+            else :
+                references_page_index = \
+                [m.start() for m in re.finditer('[0-9]{2,}[-][0-9]{2,}',file_) if m.start() > len(file_)/2][0]
+        except : raise ValueError('there is no notation about References')
+    else :
+        ls = ['^references','[^a-zA-Z가-힣]references','참고 문헌','참 고 문 헌','참  고  문  헌' ,'참조문헌' ,'참고문헌','<참 고 문 헌>']#'reference''
+        page_ls = [i for i in file_.split("\x0c") if i]
+        catch_ls = [idx for idx,page in enumerate(page_ls[len(page_ls)//2:]) for i in ls if re.search(i,page.lower())]
+        if len(catch_ls) == 0 : raise ValueError('there is no notation about References')
+        catch_ls = list(set(catch_ls))
 
-    references_page_index = len(page_ls)//2 + catch_ls[idx_ls[0]]
+        detect_ls = []
+        for i in catch_ls :
+            process_ls = []
+            for j in ls :
+                if re.search(j,page_ls[len(page_ls)//2 + i].lower()) :
+                    process_ls.append(re.search(j,page_ls[len(page_ls)//2 + i].lower()))
+            detect_ls.append(process_ls)
+        idx_ls = [(idx,val[0].start()) for idx,val in enumerate(detect_ls)][0]
+        if idx_ls[1] > 150 :
+            warnings.warn("the location of References is on the {}th in the page.".format(idx_ls[1]))
+
+        references_page_index = len(page_ls)//2 + catch_ls[idx_ls[0]]
     return references_page_index
 
 def find_end_page(start_page,file_) :
@@ -107,29 +121,37 @@ def find_end_page(start_page,file_) :
             return start_page + new_last_page + 1
         except : return -1
 
-def slicing_the_references(start_page,end_page,file_) :
-    page_ls = [i for i in file_.split('\x0c') if i]
+def slicing_the_references(start_page,end_page,file_,special_case=False) :
+    if not special_case :
+        page_ls = [i for i in file_.split('\x0c') if i]
+    else : page_ls = (file_ + '.')[:-1]
     if end_page == -1 :
         return page_ls[start_page : ]
     else : return page_ls[start_page : end_page]
 
-def total_process_to_slicing_the_references(slicing_ls):
-    ls = ['references','참고 문헌','참 고 문 헌','참  고  문  헌' , '참고문헌','참조문헌','<참 고 문 헌>','reference']
-    start_idx = \
-[re.search(i,slicing_ls[0].lower()).end() for i in ls if i in slicing_ls[0].lower()][0]
-    slicing_ls[0] = slicing_ls[0][start_idx :]
-    return slicing_ls
+def total_process_to_slicing_the_references(slicing_ls,special_case=False):
+    if special_case :
+        return slicing_ls
+    else :
+        ls = ['references','참고 문헌','참 고 문 헌','참  고  문  헌' , '참고문헌','참조문헌','<참 고 문 헌>','reference']
+        start_idx = \
+    [re.search(i,slicing_ls[0].lower()).end() for i in ls if i in slicing_ls[0].lower()][0]
+        slicing_ls[0] = slicing_ls[0][start_idx :]
+        return slicing_ls
 
-def split_sentences(slicing_ls , file_,remove_duplicated=True):
-
-    refer = [re.sub('[-]\s[0-9]+\s[-]','',i) for i in slicing_ls]
-    refer = ','.join(refer).replace(',',' ').replace('  ',' ')
+def split_sentences(slicing_ls , file_,remove_duplicated=True,special_case=False):
+    if not special_case :
+        refer = [re.sub('[-]\s[0-9]+\s[-]','',i) for i in slicing_ls]
+        refer = ','.join(refer).replace(',',' ').replace('  ',' ')
+    else : refer = (slicing_ls + '.')[:-1]
 
     loop_ls = re.findall('Download by IP [0-9]{,3}.[0-9]{,3}.[0-9]{,3}.[0-9]{,3} at',refer)
-    for _ in range(len(loop_ls)) :
-        start_point = re.search('Download by IP [0-9]{,3}.[0-9]{,3}.[0-9]{,3}.[0-9]{,3} at',refer).start()
-        end_point = re.search(' [0-9]{2} 2018 [0-9]{1}[:]*[0-9]{2} [A-Z]M',refer).end()
-        refer = refer[:start_point] + refer[end_point:]
+    try :
+        for _ in range(len(loop_ls)) :
+            start_point = re.search('Download by IP [0-9]{,3}.[0-9]{,3}.[0-9]{,3}.[0-9]{,3} at',refer).start()
+            end_point = re.search(' [0-9]{2} 2018 [0-9]{1}[:]*[0-9]{2} [A-Z]M',refer).end()
+            refer = refer[:start_point] + refer[end_point:]
+    except : pass
 
     refer_ls = \
     [i for i in [val for idx,val in enumerate(re.split('[pp.]*\s*[0-9]{1,}\s*[-]\s*[0-9]{1,}[.]*',refer))] if i]

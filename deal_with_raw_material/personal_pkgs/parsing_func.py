@@ -30,7 +30,7 @@ def journal_txt_ls(journal):
 
     return journal_txt_ls
 
-def split_to_sent(file_path):
+def split_to_sent(file_path,special_case=False):
     '''
     HOW TO USE :
     ___________________________________________________
@@ -47,14 +47,56 @@ def split_to_sent(file_path):
     '''
     sent_refer_ls = []
     error_ls = []
+    if not special_case :
+        for path in file_path :
+            try :
+                ca = func.Slicing_paper(path,special_case=False)
+                sent_refer_ls.append(ca.split())
+            except Exception as e: error_ls.append((e,path))
 
-    for path in file_path :
+        return [j for i in sent_refer_ls for j in i] , error_ls
+    else :
+        for path in file_path :
+            try :
+                ca = func.Slicing_paper(path,special_case=True)
+                sent_refer_ls.append(ca.split())
+            except Exception as e: error_ls.append((e,path))
+
+        return [j for i in sent_refer_ls for j in i] , error_ls
+
+def fix_the_error_file(error_path_ls):
+    file_ = []
+    valueerror_ls = []
+    unicodeerror_ls = []
+    sentences_ls = []
+    err_cnt = 0
+
+    for i in error_path_ls :
+        for j in os.listdir("error_solved_file/") :
+            if i.split('/')[-1] in j :
+                file_.append("error_solved_file/" + j)
+
+    for i in file_ :
         try :
-            ca = func.Slicing_paper(path)
-            sent_refer_ls.append(ca.split())
-        except Exception as e: error_ls.append((e,path))
+            process1 = func.Slicing_paper(i,special_case=False)
+            sentences_ls.append(process1.split())
 
-    return [j for i in sent_refer_ls for j in i] , error_ls
+        except ValueError :
+            valueerror_ls.append(i)
+
+    for idx,file in enumerate(valueerror_ls) :
+        try :
+            process1 = func.Slicing_paper(file,special_case=True)
+            sentences_ls.append(process1.split())
+
+        except :
+            err_cnt +=1
+
+    sentences_ls = [j for i in sentences_ls for j in i]
+    print('The number of original error files was {}, but it was reduced to {}.'.format(len(error_path_ls),len(file_)-err_cnt))
+    print('The Number of final error file is {}'.format(err_cnt))
+    print('The length of sentences which I fixed the error is {}'.format(len(sentences_ls)))
+    return sentences_ls
 
 def show_quote_and_unquote(sent_ls):
     perfect_sent = [i for i in sent_ls if re.search("“.+”",i)]
