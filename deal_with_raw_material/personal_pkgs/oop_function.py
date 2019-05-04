@@ -49,11 +49,14 @@ def extract_text_from_file(path):
         raise ValueError('Sorry, this function only deal with text and pdf files')
 
     return file_
+
 ################################################################################
+
 import re
 
 def clean_text(file_):
     text = re.sub('[=+,#/\?:^$@*\"※~&%ㆍ!』\\|\<\>\…》]',' ',file_)
+    text = re.sub('[provider:earticle]','',file_)
     text = re.sub('www.earticle.net','',file_)
     text = text.replace("\n",'')
     return text
@@ -153,8 +156,9 @@ def split_sentences(slicing_ls , file_,remove_duplicated=True,special_case=False
             refer = refer[:start_point] + refer[end_point:]
     except : pass
 
+    regex_threshold = 'pp\s*\.?\s[0-9]{1,4}\s[0-9]{1,4}[.]*|\s*[0-9]{1,4}\s*[-]\s*[0-9]{1,4}[.]*|pp\s*\.?\s*[0-9]{1,4}\s*[-]\s*[0-9]{1,4}[.]*'
     refer_ls = \
-    [i for i in [val for idx,val in enumerate(re.split('[pp.]*\s*[0-9]{1,}\s*[-]\s*[0-9]{1,}[.]*',refer))] if i]
+    [i for i in [val for idx,val in enumerate(re.split(regex_threshold,refer))] if i]
 
     tuning_process1 = []
 
@@ -182,17 +186,17 @@ def split_sentences(slicing_ls , file_,remove_duplicated=True,special_case=False
 
     if remove_duplicated :
         in_korean_ls , translated_eng_ls =[],[]
-        if '(in Korean).' in refer :
-            in_korean_ls = [tuning_process2[idx-1] for idx,val in enumerate(tuning_process2) if '(in Korean).' in val]
-        if '(Translated in English)' in refer :
+        if '(in korean)' in refer.lower() :
+            in_korean_ls = [tuning_process2[idx-1] for idx,val in enumerate(tuning_process2) if '(in korean)' in val.lower()]
+        if '(translated in english)' in refer.lower() :
             translated_eng_ls = \
-            [tuning_process2[idx] for idx,val in enumerate(tuning_process2) if '(Translated in English)' in val]
+            [tuning_process2[idx] for idx,val in enumerate(tuning_process2) if '(translated in english)' in val.lower()]
 
         exception_ls = in_korean_ls + translated_eng_ls
         for idx in range(len(exception_ls)) :
             tuning_process2.remove(exception_ls[idx])
 
-    tuned_refer_ls = [i.replace('(in Korean).','').strip() for i in tuning_process2]
+    tuned_refer_ls = [i.replace('(in Korean).','').replace('(In Korean).','').strip() for i in tuning_process2]
 
 
     return tuned_refer_ls
